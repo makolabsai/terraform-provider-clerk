@@ -273,7 +273,9 @@ func (r *ApplicationResource) Delete(ctx context.Context, req resource.DeleteReq
 		return
 	}
 
-	if state.DeletionProtection.ValueBool() {
+	if state.DeletionProtection.IsNull() ||
+		state.DeletionProtection.IsUnknown() ||
+		state.DeletionProtection.ValueBool() {
 		resp.Diagnostics.AddError(
 			"Cannot destroy application with deletion protection enabled",
 			fmt.Sprintf("Application %q (%s) has deletion_protection = true. "+

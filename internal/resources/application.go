@@ -263,6 +263,9 @@ func (r *ApplicationResource) Update(ctx context.Context, req resource.UpdateReq
 
 	mapInstancesToState(application.Instances, &plan)
 
+	// Re-register backend clients in case secrets changed.
+	r.registerBackendClients(plan.ID.ValueString(), application.Instances, &resp.Diagnostics)
+
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
 
@@ -317,8 +320,20 @@ func mapInstancesToState(instances []client.PlatformApplicationInstance, state *
 }
 
 // registerBackendClients registers Backend API clients for instances that have secret keys.
+// This enables key routing: other resources (e.g. clerk_environment) can look up the
+// correct Backend API client by application_id + environment.
 func (r *ApplicationResource) registerBackendClients(appID string, instances []client.PlatformApplicationInstance, diags *diag.Diagnostics) {
-	// This is a no-op helper for now — will be wired in when backend resources need it.
+	for _, inst := range instances {
+		if inst.SecretKey == "" {
+			continue
+		}
+		if err := r.client.RegisterBackendClient(appID, inst.EnvironmentType, inst.SecretKey); err != nil {
+			diags.AddWarning(
+				"Failed to register backend client",
+				fmt.Sprintf("Could not register backend client for %s/%s: %s", appID, inst.EnvironmentType, err.Error()),
+			)
+		}
+	}
 }
 
 // listRequiresReplace is a plan modifier that forces replacement when a list attribute changes.

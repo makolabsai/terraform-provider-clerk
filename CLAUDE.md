@@ -4,11 +4,18 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Terraform provider for the [Clerk](https://clerk.com) authentication platform. Written in Go using the Terraform Plugin Framework. Enables managing Clerk resources (organizations, users, roles, permissions, etc.) via Terraform/OpenTofu.
+Terraform provider for the [Clerk](https://clerk.com) authentication platform. Written in Go using the Terraform Plugin Framework. Enables managing Clerk applications and instance settings via Terraform/OpenTofu.
 
 ## Repository Status
 
-This project is in early development. The initial scaffolding is being built out.
+Active development. Phase 1 (scaffolding) and Phase 2 (application lifecycle) are complete. Phase 3 (environment configuration) is in progress.
+
+### Implemented Resources
+- `clerk_application` — Full CRUD with deletion protection, dev/prod instance key exposure
+- `clerk_environment` — Instance settings, restrictions, organization settings per environment
+
+### Implemented Data Sources
+- `clerk_application` — Read-only lookup by ID
 
 ## Build & Development Commands
 
@@ -20,64 +27,61 @@ go build -o terraform-provider-clerk
 go test ./...
 
 # Run acceptance tests (requires CLERK_PLATFORM_API_KEY)
-TF_ACC=1 go test ./... -v
+TF_ACC=1 go test ./... -v -timeout 120m
 
 # Run a single test
-go test ./internal/provider -run TestAccClerkOrganization_basic -v
-
-# Run tests with acceptance flag for a specific package
-TF_ACC=1 go test ./internal/provider -run TestAcc -v -timeout 120m
+TF_ACC=1 go test ./internal/provider -run TestAccClerkEnvironment_basic -v
 
 # Lint
 golangci-lint run ./...
 
-# Generate documentation
-go generate ./...
-
 # Install provider locally for manual testing
-go install .
+make install
 ```
 
 ## Architecture
 
 This provider follows the [Terraform Plugin Framework](https://developer.hashicorp.com/terraform/plugin/framework) pattern (not the older SDKv2).
 
-### Expected Structure
+### Two-Tier API Pattern
+
+- **Platform API** (workspace-level): Manages applications. Uses `CLERK_PLATFORM_API_KEY`.
+- **Backend API** (per-instance): Manages instance settings. Secret keys are resolved via internal key routing — `clerk_application` registers keys on create/read, and `clerk_environment` looks them up by `{app_id}/{environment}`.
+
+### Structure
 
 ```text
-├── main.go                     # Entry point, serves the provider
-├── internal/
-│   ├── provider/               # Provider configuration and registration
-│   │   ├── provider.go         # Provider schema, Configure(), Resources(), DataSources()
-│   │   └── provider_test.go
-│   ├── resources/              # Terraform resources (CRUD)
-│   │   ├── organization.go
-│   │   └── ...
-│   ├── datasources/            # Terraform data sources (read-only)
-│   └── client/                 # Clerk API client wrapper
-├── examples/                   # Example Terraform configurations for docs
-│   ├── provider/
-│   ├── resources/
-│   └── data-sources/
-└── docs/                       # Generated documentation (via tfplugindocs)
+internal/
+  client/
+    client.go          # ClerkClient with backend client registry (thread-safe)
+    platform_api.go    # Platform API HTTP client (application CRUD)
+    backend_api.go     # Backend API wrapper using Clerk SDK (instancesettings)
+  provider/
+    provider.go        # Provider schema, Configure(), resource/datasource registration
+  resources/
+    application.go     # clerk_application (CRUD + deletion protection + key routing)
+    environment.go     # clerk_environment (settings-only, no read API, composite ID)
+  datasources/
+    application.go     # data.clerk_application (read-only by ID)
 ```
 
 ### Key Patterns
 
-- **Provider configuration**: API key passed via `platform_api_key` attribute or `CLERK_PLATFORM_API_KEY` environment variable
-- **Resources**: Each resource implements `resource.Resource` interface with CRUD methods (Create, Read, Update, Delete)
-- **Data sources**: Each data source implements `datasource.DataSource` interface with Read method
-- **Client**: Thin wrapper around the Clerk Go SDK, instantiated in `provider.Configure()`
-- **Testing**: Acceptance tests use `resource.Test()` with real API calls against Clerk (gated by `TF_ACC=1`)
+- **Provider configuration**: `platform_api_key` attribute or `CLERK_PLATFORM_API_KEY` env var
+- **Key routing**: `ClerkClient.RegisterBackendClient()` / `GetBackendConfig()` maps `{app_id}/{env}` to Clerk SDK client configs
+- **Deletion protection**: Provider-side boolean (defaults to true) that blocks `Delete`. Must handle `types.Bool` null/unknown states.
+- **Settings-only resources**: `clerk_environment` doesn't create/delete the instance — it configures it. Delete resets to defaults. Read preserves state (no drift detection).
+- **Composite IDs**: `clerk_environment` uses `{application_id}/{environment}` as its ID
 
 ### Naming Conventions
 
-- Resource type names: `clerk_<resource>` (e.g., `clerk_organization`, `clerk_user`)
+- Resource type names: `clerk_<resource>` (e.g., `clerk_application`, `clerk_environment`)
 - Go files: snake_case matching the resource name
 - Test files: `<resource>_test.go` with functions named `TestAcc<Resource>_<scenario>`
+- Acceptance tests in `internal/provider/`, unit tests alongside the code they test
 
-## Infrastructure Notes
+### Clerk API Limitations
 
-- Spacelift manages all OpenTofu/Terraform deployments — never apply changes directly
-- Push changes via PR, not directly to main
-- CI runs via GitHub Actions
+- Authentication strategies (email/password/OAuth/MFA) are dashboard-only — no API
+- Backend API `instancesettings` has no GET endpoints — only PATCH (update)
+- Platform API doesn't return application `name` in GET responses

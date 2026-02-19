@@ -40,8 +40,12 @@ func NewClerkClient(platformAPIKey string) *ClerkClient {
 
 // RegisterBackendClient registers a Backend API client for a specific
 // application and environment combination. The secret key is the Backend
-// API secret key for that instance.
-func (c *ClerkClient) RegisterBackendClient(appID, environment, secretKey string) {
+// API secret key for that instance. Returns an error if any parameter is empty.
+func (c *ClerkClient) RegisterBackendClient(appID, environment, secretKey string) error {
+	if appID == "" || environment == "" || secretKey == "" {
+		return fmt.Errorf("appID, environment, and secretKey are required")
+	}
+
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -49,6 +53,7 @@ func (c *ClerkClient) RegisterBackendClient(appID, environment, secretKey string
 	config := &clerk.ClientConfig{}
 	config.Key = clerk.String(secretKey)
 	c.backendClients[key] = config
+	return nil
 }
 
 // GetBackendConfig returns the Backend API client configuration for the given

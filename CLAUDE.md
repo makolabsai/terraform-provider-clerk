@@ -19,7 +19,7 @@ go build -o terraform-provider-clerk
 # Run all tests
 go test ./...
 
-# Run acceptance tests (requires CLERK_API_KEY)
+# Run acceptance tests (requires CLERK_PLATFORM_API_KEY)
 TF_ACC=1 go test ./... -v
 
 # Run a single test
@@ -44,7 +44,7 @@ This provider follows the [Terraform Plugin Framework](https://developer.hashico
 
 ### Expected Structure
 
-```
+```text
 ├── main.go                     # Entry point, serves the provider
 ├── internal/
 │   ├── provider/               # Provider configuration and registration
@@ -64,7 +64,7 @@ This provider follows the [Terraform Plugin Framework](https://developer.hashico
 
 ### Key Patterns
 
-- **Provider configuration**: API key passed via `api_key` attribute or `CLERK_API_KEY` environment variable
+- **Provider configuration**: API key passed via `platform_api_key` attribute or `CLERK_PLATFORM_API_KEY` environment variable
 - **Resources**: Each resource implements `resource.Resource` interface with CRUD methods (Create, Read, Update, Delete)
 - **Data sources**: Each data source implements `datasource.DataSource` interface with Read method
 - **Client**: Thin wrapper around the Clerk Go SDK, instantiated in `provider.Configure()`

@@ -358,6 +358,19 @@ func (r *EnvironmentResource) Delete(ctx context.Context, req resource.DeleteReq
 			fmt.Sprintf("Could not reset restrictions for %s/%s: %s. The instance still exists in Clerk.", appID, env, err.Error()),
 		)
 	}
+
+	// Reset organization settings to defaults.
+	_, err = r.client.UpdateOrganizationSettings(ctx, appID, env, &instancesettings.UpdateOrganizationSettingsParams{
+		Enabled:            &defaultFalse,
+		AdminDeleteEnabled: &defaultFalse,
+		DomainsEnabled:     &defaultFalse,
+	})
+	if err != nil {
+		resp.Diagnostics.AddWarning(
+			"Failed to reset organization settings",
+			fmt.Sprintf("Could not reset organization settings for %s/%s: %s. The instance still exists in Clerk.", appID, env, err.Error()),
+		)
+	}
 }
 
 func (r *EnvironmentResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
@@ -563,14 +576,21 @@ func (r *EnvironmentResource) applyOrganizationSettings(ctx context.Context, app
 		return
 	}
 
+	// The API returns role keys (e.g. "org:admin") in creator_role / domains_default_role,
+	// but the params accept role IDs via creator_role_id / domains_default_role_id.
+	// To avoid state drift, preserve the user's configured values for these fields
+	// rather than overwriting with the differently-formatted API response.
+	creatorRoleID := orgSettings.CreatorRoleID
+	domainsDefaultRoleID := orgSettings.DomainsDefaultRoleID
+
 	orgObj, d := types.ObjectValueFrom(ctx, orgSettingsAttrTypes, &OrganizationSettingsModel{
 		Enabled:                types.BoolValue(result.Enabled),
 		MaxAllowedMemberships:  types.Int64Value(result.MaxAllowedMemberships),
-		CreatorRoleID:          types.StringValue(result.CreatorRole),
+		CreatorRoleID:          creatorRoleID,
 		AdminDeleteEnabled:     types.BoolValue(result.AdminDeleteEnabled),
 		DomainsEnabled:         types.BoolValue(result.DomainsEnabled),
 		DomainsEnrollmentModes: enrollmentModes,
-		DomainsDefaultRoleID:   types.StringValue(result.DomainsDefaultRole),
+		DomainsDefaultRoleID:   domainsDefaultRoleID,
 	})
 	diags.Append(d...)
 	plan.OrganizationSettings = orgObj

@@ -263,6 +263,9 @@ func (r *ApplicationResource) Update(ctx context.Context, req resource.UpdateReq
 
 	mapInstancesToState(application.Instances, &plan)
 
+	// Re-register backend clients in case secrets changed.
+	r.registerBackendClients(plan.ID.ValueString(), application.Instances, &resp.Diagnostics)
+
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
 

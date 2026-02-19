@@ -71,6 +71,25 @@ func TestUpdateInstanceSettings(t *testing.T) {
 	}
 }
 
+func TestUpdateInstanceSettings_Error(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusUnprocessableEntity)
+		w.Write([]byte(`{"errors":[{"message":"invalid value","long_message":"HIBP value is invalid","code":"form_param_value_invalid"}]}`))
+	}))
+	defer server.Close()
+
+	c := newBackendTestClient(t, server, "app_1", "development", "sk_test_dev")
+
+	hibp := true
+	err := c.UpdateInstanceSettings(context.Background(), "app_1", "development", &instancesettings.UpdateParams{
+		HIBP: &hibp,
+	})
+	if err == nil {
+		t.Fatal("expected error for 422 response")
+	}
+}
+
 func TestUpdateInstanceRestrictions(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPatch {

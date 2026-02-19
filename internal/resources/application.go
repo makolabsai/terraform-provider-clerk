@@ -8,6 +8,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -28,6 +29,7 @@ type ApplicationResource struct {
 type ApplicationResourceModel struct {
 	ID                 types.String `tfsdk:"id"`
 	Name               types.String `tfsdk:"name"`
+	DeletionProtection types.Bool   `tfsdk:"deletion_protection"`
 	Domain             types.String `tfsdk:"domain"`
 	EnvironmentTypes   types.List   `tfsdk:"environment_types"`
 	Template           types.String `tfsdk:"template"`
@@ -61,6 +63,15 @@ func (r *ApplicationResource) Schema(_ context.Context, _ resource.SchemaRequest
 			"name": schema.StringAttribute{
 				Description: "The name of the application.",
 				Required:    true,
+			},
+			"deletion_protection": schema.BoolAttribute{
+				Description: "Whether deletion protection is enabled. When true, the application cannot be destroyed. " +
+					"Set to false before destroying. Defaults to true.",
+				Optional: true,
+				Computed: true,
+				PlanModifiers: []planmodifier.Bool{
+					boolplanmodifier.UseStateForUnknown(),
+				},
 			},
 			"domain": schema.StringAttribute{
 				Description: "The domain for the application. Only set at creation time.",
@@ -189,6 +200,9 @@ func (r *ApplicationResource) Create(ctx context.Context, req resource.CreateReq
 
 	// Map the API response to state.
 	plan.ID = types.StringValue(application.ApplicationID)
+	if plan.DeletionProtection.IsNull() || plan.DeletionProtection.IsUnknown() {
+		plan.DeletionProtection = types.BoolValue(true)
+	}
 	mapInstancesToState(application.Instances, &plan)
 
 	// Register backend clients for each instance with a secret key.
@@ -256,6 +270,16 @@ func (r *ApplicationResource) Delete(ctx context.Context, req resource.DeleteReq
 	var state ApplicationResourceModel
 	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	if state.DeletionProtection.ValueBool() {
+		resp.Diagnostics.AddError(
+			"Cannot destroy application with deletion protection enabled",
+			fmt.Sprintf("Application %q (%s) has deletion_protection = true. "+
+				"Set deletion_protection = false and apply before destroying.",
+				state.Name.ValueString(), state.ID.ValueString()),
+		)
 		return
 	}
 

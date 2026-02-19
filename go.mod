@@ -1,6 +1,6 @@
 module github.com/makolabsai/terraform-provider-clerk
 
-go 1.24.0
+go 1.26.0
 
 require (
 	github.com/clerk/clerk-sdk-go/v2 v2.5.1

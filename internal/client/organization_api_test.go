@@ -170,3 +170,26 @@ func TestCreateOrganization_NotRegistered(t *testing.T) {
 		t.Fatal("expected error for unregistered backend client")
 	}
 }
+
+func TestGetOrganization_Error(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusNotFound)
+		json.NewEncoder(w).Encode(map[string]any{
+			"errors": []map[string]any{
+				{
+					"code":    "resource_not_found",
+					"message": "Organization not found",
+				},
+			},
+		})
+	}))
+	defer server.Close()
+
+	c := newBackendTestClient(t, server, "app_1", "development", "sk_test_dev")
+
+	_, err := c.GetOrganization(context.Background(), "app_1", "development", "org_nonexistent")
+	if err == nil {
+		t.Fatal("expected error for 404 response")
+	}
+}

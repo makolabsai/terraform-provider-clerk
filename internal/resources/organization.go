@@ -182,7 +182,11 @@ func (r *OrganizationResource) Read(ctx context.Context, req resource.ReadReques
 
 	org, err := r.client.GetOrganization(ctx, appID, env, state.ID.ValueString())
 	if err != nil {
-		resp.State.RemoveResource(ctx)
+		if apiErr, ok := err.(*clerk.APIErrorResponse); ok && apiErr.HTTPStatusCode == 404 {
+			resp.State.RemoveResource(ctx)
+			return
+		}
+		resp.Diagnostics.AddError("Error reading Clerk organization", err.Error())
 		return
 	}
 

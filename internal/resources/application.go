@@ -307,6 +307,10 @@ func (m listRequiresReplace) MarkdownDescription(ctx context.Context) string {
 }
 
 func (m listRequiresReplace) PlanModifyList(_ context.Context, req planmodifier.ListRequest, resp *planmodifier.ListResponse) {
+	if req.PlanValue.IsUnknown() {
+		resp.PlanValue = req.StateValue
+		return
+	}
 	if req.StateValue.IsNull() {
 		return
 	}

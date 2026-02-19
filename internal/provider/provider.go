@@ -99,11 +99,13 @@ func (p *ClerkProvider) Resources(_ context.Context) []func() resource.Resource 
 	return []func() resource.Resource{
 		resources.NewApplicationResource,
 		resources.NewEnvironmentResource,
+		resources.NewOrganizationResource,
 	}
 }
 
 func (p *ClerkProvider) DataSources(_ context.Context) []func() datasource.DataSource {
 	return []func() datasource.DataSource{
 		datasources.NewApplicationDataSource,
+		datasources.NewOrganizationDataSource,
 	}
 }

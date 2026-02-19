@@ -64,6 +64,9 @@ func TestGetOrganization(t *testing.T) {
 		if r.URL.Path != "/v1/organizations/org_test123" {
 			t.Errorf("expected /v1/organizations/org_test123, got %s", r.URL.Path)
 		}
+		if r.Header.Get("Authorization") != "Bearer sk_test_dev" {
+			t.Errorf("unexpected auth header: %s", r.Header.Get("Authorization"))
+		}
 
 		resp := map[string]any{
 			"object":                  "organization",
@@ -98,6 +101,9 @@ func TestUpdateOrganization(t *testing.T) {
 		}
 		if r.URL.Path != "/v1/organizations/org_test123" {
 			t.Errorf("expected /v1/organizations/org_test123, got %s", r.URL.Path)
+		}
+		if r.Header.Get("Authorization") != "Bearer sk_test_dev" {
+			t.Errorf("unexpected auth header: %s", r.Header.Get("Authorization"))
 		}
 
 		resp := map[string]any{
@@ -136,6 +142,9 @@ func TestDeleteOrganization(t *testing.T) {
 		}
 		if r.URL.Path != "/v1/organizations/org_test123" {
 			t.Errorf("expected /v1/organizations/org_test123, got %s", r.URL.Path)
+		}
+		if r.Header.Get("Authorization") != "Bearer sk_test_dev" {
+			t.Errorf("unexpected auth header: %s", r.Header.Get("Authorization"))
 		}
 
 		resp := map[string]any{

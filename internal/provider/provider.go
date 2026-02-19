@@ -98,6 +98,7 @@ func (p *ClerkProvider) Configure(ctx context.Context, req provider.ConfigureReq
 func (p *ClerkProvider) Resources(_ context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
 		resources.NewApplicationResource,
+		resources.NewEnvironmentResource,
 	}
 }
 

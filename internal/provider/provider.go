@@ -10,6 +10,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/makolabsai/terraform-provider-clerk/internal/client"
+	"github.com/makolabsai/terraform-provider-clerk/internal/datasources"
+	"github.com/makolabsai/terraform-provider-clerk/internal/resources"
 )
 
 var _ provider.Provider = (*ClerkProvider)(nil)
@@ -95,12 +97,12 @@ func (p *ClerkProvider) Configure(ctx context.Context, req provider.ConfigureReq
 
 func (p *ClerkProvider) Resources(_ context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
-		// Resources will be registered here as they are implemented.
+		resources.NewApplicationResource,
 	}
 }
 
 func (p *ClerkProvider) DataSources(_ context.Context) []func() datasource.DataSource {
 	return []func() datasource.DataSource{
-		// Data sources will be registered here as they are implemented.
+		datasources.NewApplicationDataSource,
 	}
 }

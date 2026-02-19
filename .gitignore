@@ -42,3 +42,7 @@ terraform.rc
 
 # Environment
 .env
+
+# Tool artifacts
+.golangci.bck.yml
+.playwright-mcp/

@@ -32,7 +32,7 @@ provider "clerk" {
 terraform {
   required_providers {
     clerk = {
-      source = "registry.terraform.io/makolabsai/clerk"
+      source = "makolabsai/clerk"
     }
   }
 }
